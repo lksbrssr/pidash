@@ -410,8 +410,8 @@ def build():
               .replace("__NPROJ__", str(len(projects))) \
               .replace("__NMSGS__", f"{total_msgs:,}") \
               .replace("__NTOK__", f"{total_tokens/1_000_000:.1f}M") \
-              .replace("__NCOST__", f"${total_cost:.2f}") \
-              .replace("__NAVG__", f"${avg_monthly:.2f}")
+              .replace("__NCOST__", f"${total_cost:,.2f}") \
+              .replace("__NAVG__", f"${avg_monthly:,.2f}")
 
     OUT.write_text(doc, encoding="utf-8")
     size = OUT.stat().st_size
@@ -428,29 +428,37 @@ HTML = r"""<!DOCTYPE html>
 <title>pi sessions</title>
 <style>
   :root{
-    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#26303b; --fg:#e6edf3;
-    --muted:#8b949e; --accent:#58a6ff; --tagfg:#79c0ff; --green:#7ee787; --think:#a371f7;
+    --bg:#0a0b0d; --bg2:#0f1113; --panel:#111316; --panel2:#171a1e; --border:#22262c;
+    --fg:#e9ebef; --muted:#818894; --accent:#7aa2f7; --accentbg:#7aa2f714;
+    --accentln:#7aa2f733; --tagfg:#9db8fb; --green:#5fb98a; --think:#a58cf5;
   }
   *{box-sizing:border-box;}
+  ::selection{background:var(--accentln);}
+  .num{font-variant-numeric:tabular-nums;}
   html,body{height:100%;margin:0;}
   body{background:var(--bg);color:var(--fg);
     font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
     display:flex;flex-direction:column;overflow:hidden;}
-  header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;
-    align-items:center;gap:16px;flex-wrap:wrap;}
-  header h1{margin:0;font-size:16px;white-space:nowrap;}
-  .hstats{color:var(--muted);font-size:12px;}
-  .hstats b{color:var(--fg);}
+  header{padding:13px 20px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;gap:18px;flex-wrap:wrap;}
+  header h1{margin:0;font-size:14px;font-weight:600;white-space:nowrap;letter-spacing:.03em;
+    color:var(--fg);}
+  .hstats{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;
+    display:flex;gap:14px;flex-wrap:wrap;}
+  .hstats .st b{color:var(--fg);font-weight:600;}
+  .hstats .st{white-space:nowrap;}
   .main{flex:1;display:flex;min-height:0;position:relative;}
 
   /* Far-left nav rail */
-  .nav{width:64px;min-width:64px;background:#0a0e14;border-right:1px solid var(--border);
-    display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:4px;}
-  .navbtn{width:52px;padding:9px 0;border-radius:10px;background:none;border:none;color:var(--muted);
-    cursor:pointer;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:3px;}
-  .navbtn .ic{font-size:19px;}
+  .nav{width:70px;min-width:70px;background:var(--bg2);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;padding-top:12px;gap:6px;}
+  .navbtn{width:56px;padding:10px 0;border-radius:10px;background:none;border:none;color:var(--muted);
+    cursor:pointer;font-size:10.5px;letter-spacing:.02em;display:flex;flex-direction:column;
+    align-items:center;gap:5px;transition:background .12s,color .12s;}
+  .navbtn .ic{width:20px;height:20px;display:block;}
+  .navbtn .ic svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;}
   .navbtn:hover{background:var(--panel2);color:var(--fg);}
-  .navbtn.active{background:#1f6feb22;color:var(--accent);}
+  .navbtn.active{background:var(--accentbg);color:var(--accent);}
 
   /* Insights */
   .insights{flex:1;overflow-y:auto;padding:22px 30px;min-width:0;display:none;}
@@ -462,7 +470,7 @@ HTML = r"""<!DOCTYPE html>
   .skillcol{width:300px;min-width:260px;}
   .skillitem{padding:11px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
   .skillitem:hover{background:var(--panel2);}
-  .skillitem.active{background:#1f6feb22;border-left:3px solid var(--accent);padding-left:9px;}
+  .skillitem.active{background:var(--accentbg);border-left:3px solid var(--accent);padding-left:9px;}
   .skillitem .t{font-weight:600;font-size:13px;}
   .skillitem .d{color:var(--muted);font-size:11px;margin-top:3px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
@@ -480,7 +488,7 @@ HTML = r"""<!DOCTYPE html>
   .kpis{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:26px;}
   .kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;
     padding:14px 20px;min-width:130px;}
-  .kpi .n{font-size:24px;font-weight:600;}
+  .kpi .n{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em;}
   .kpi .n.cost{color:var(--green);}
   .kpi .l{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;
@@ -488,9 +496,9 @@ HTML = r"""<!DOCTYPE html>
   .card h3{margin:0 0 14px;font-size:14px;}
   /* bar chart */
   .bars{display:flex;align-items:flex-end;gap:3px;height:180px;}
-  .bar{flex:1;min-width:3px;background:linear-gradient(180deg,#58a6ff,#1f6feb);
-    border-radius:3px 3px 0 0;position:relative;transition:opacity .15s;}
-  .bar:hover{opacity:.75;}
+  .bar{flex:1;min-width:3px;background:var(--accent);opacity:.85;
+    border-radius:2px 2px 0 0;position:relative;transition:opacity .15s;}
+  .bar:hover{opacity:1;}
   .bar .tip{display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
     background:#000;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;
     white-space:nowrap;z-index:10;margin-bottom:4px;}
@@ -501,9 +509,9 @@ HTML = r"""<!DOCTYPE html>
   /* horizontal ranked bars */
   .hbar{margin:8px 0;}
   .hbar .lbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;}
-  .hbar .lbl .c{color:var(--green);}
-  .hbar .track{background:var(--panel2);border-radius:5px;height:10px;overflow:hidden;}
-  .hbar .fill{height:100%;background:linear-gradient(90deg,#7ee787,#2ea043);border-radius:5px;}
+  .hbar .lbl .c{color:var(--green);font-variant-numeric:tabular-nums;}
+  .hbar .track{background:var(--panel2);border-radius:4px;height:8px;overflow:hidden;}
+  .hbar .fill{height:100%;background:var(--green);opacity:.9;border-radius:4px;}
   .toplist .row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;
     border-bottom:1px solid var(--border);font-size:13px;}
   .toplist .row .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -520,11 +528,14 @@ HTML = r"""<!DOCTYPE html>
   .folder{display:flex;align-items:center;gap:9px;padding:11px 12px;
     border-bottom:1px solid var(--border);cursor:pointer;}
   .folder:hover{background:var(--panel2);}
-  .folder.active{background:#1f6feb22;border-left:3px solid var(--accent);padding-left:9px;}
-  .folder .ficon{font-size:15px;}
-  .folder .fname{flex:1;font-weight:600;font-size:13px;overflow:hidden;
+  .folder.active{background:var(--accentbg);border-left:3px solid var(--accent);padding-left:9px;}
+  .folder .ficon{width:14px;height:14px;flex:none;color:var(--muted);}
+  .folder.active .ficon{color:var(--accent);}
+  .folder .ficon svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7;}
+  .folder .fname{flex:1;font-weight:500;font-size:13px;overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap;}
-  .folder .fmeta{color:var(--muted);font-size:11px;white-space:nowrap;}
+  .folder .fmeta{color:var(--muted);font-size:11px;white-space:nowrap;
+    font-variant-numeric:tabular-nums;}
   .folder .fmeta .fc{color:var(--green);}
 
   /* Column 2: chats in the selected folder */
@@ -532,16 +543,19 @@ HTML = r"""<!DOCTYPE html>
     display:flex;flex-direction:column;background:var(--panel);}
   .chatcol .search{padding:10px;border-bottom:1px solid var(--border);}
   .chatcol input{width:100%;background:var(--panel2);color:var(--fg);border:1px solid var(--border);
-    border-radius:8px;padding:8px 10px;font-size:13px;}
+    border-radius:8px;padding:8px 11px;font-size:13px;outline:none;transition:border-color .12s;}
+  .chatcol input:focus{border-color:var(--accent);}
+  .chatcol input::placeholder{color:var(--muted);}
   .list{overflow-y:auto;flex:1;}
   .item{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;}
   .item:hover{background:var(--panel2);}
-  .item.active{background:#1f6feb22;border-left:3px solid var(--accent);padding-left:9px;}
+  .item.active{background:var(--accentbg);border-left:3px solid var(--accent);padding-left:9px;}
   .item .t{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
-  .item .m{color:var(--muted);font-size:11px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;}
+  .item .m{color:var(--muted);font-size:11px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;
+    font-variant-numeric:tabular-nums;}
   .item .m .cost{color:var(--green);}
-  .tag{background:#1f6feb33;color:var(--tagfg);border-radius:20px;padding:1px 8px;font-size:11px;}
+  .tag{background:var(--accentbg);color:var(--tagfg);border-radius:20px;padding:1px 8px;font-size:11px;}
 
   /* Center transcript */
   .center{flex:1;overflow-y:auto;padding:20px 26px;min-width:0;}
@@ -552,14 +566,14 @@ HTML = r"""<!DOCTYPE html>
   .convo-head .sub{color:var(--muted);font-size:12px;margin-top:4px;}
   .infobtn{margin-left:auto;background:var(--panel2);color:var(--accent);border:1px solid var(--border);
     border-radius:8px;padding:7px 12px;cursor:pointer;font-size:13px;white-space:nowrap;}
-  .infobtn:hover{background:#1f6feb22;}
+  .infobtn:hover{background:var(--accentbg);}
 
   .msg{margin:12px 0;display:flex;flex-direction:column;}
   .msg .who{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
     margin-bottom:4px;}
   .bubble{padding:10px 14px;border-radius:10px;white-space:pre-wrap;word-wrap:break-word;
     border:1px solid var(--border);max-width:900px;}
-  .user .bubble{background:#1f6feb1a;border-color:#1f6feb44;}
+  .user .bubble{background:var(--accentbg);border-color:var(--accentln);}
   .assistant .bubble{background:var(--panel);}
   .assistant{align-items:flex-start;}
   .user{align-items:flex-end;}
@@ -570,7 +584,7 @@ HTML = r"""<!DOCTYPE html>
   .toolcall{color:var(--tagfg);font-size:12px;margin:4px 0;font-family:ui-monospace,Menlo,monospace;}
   .toolcall .args{color:var(--muted);}
   details.tool summary{cursor:pointer;color:var(--muted);font-size:12px;margin:6px 0;}
-  details.tool pre,details.bash pre{background:#0a0e14;border:1px solid var(--border);border-radius:8px;
+  details.tool pre,details.bash pre{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
     padding:8px 10px;overflow-x:auto;font-size:12px;margin:4px 0;max-height:340px;white-space:pre-wrap;}
   details.tool.err summary{color:#ff7b72;}
   .bash .cmd{color:var(--green);font-family:ui-monospace,Menlo,monospace;font-size:12px;}
@@ -584,33 +598,36 @@ HTML = r"""<!DOCTYPE html>
   .meta .close{margin-left:auto;cursor:pointer;color:var(--muted);background:none;border:none;font-size:18px;}
   .meta .row{padding:9px 0;border-bottom:1px solid var(--border);}
   .meta .row .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
-  .meta .row .v{font-size:14px;margin-top:2px;word-break:break-all;}
+  .meta .row .v{font-size:14px;margin-top:2px;word-break:break-all;font-variant-numeric:tabular-nums;}
   .meta .v.cost{color:var(--green);}
   .meta code{font-size:11px;color:var(--muted);}
   .cmdbox{margin-top:6px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;
     padding:6px 8px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--accent);
     cursor:pointer;word-break:break-all;}
-  .cmdbox:hover{background:#1f6feb22;}
+  .cmdbox:hover{background:var(--accentbg);}
 </style>
 </head>
 <body>
 <header>
-  <h1>🗂️ pi sessions</h1>
+  <h1>pi&nbsp;·&nbsp;sessions</h1>
   <div class="hstats">
-    <b>__NSESS__</b> sessions · <b>__NPROJ__</b> projects ·
-    <b>__NMSGS__</b> msgs · <b>__NTOK__</b> tokens · <b>__NCOST__</b> est. cost ·
-    <b>__NAVG__</b>/mo avg
+    <span class="st"><b>__NSESS__</b> sessions</span>
+    <span class="st"><b>__NPROJ__</b> projects</span>
+    <span class="st"><b>__NMSGS__</b> msgs</span>
+    <span class="st"><b>__NTOK__</b> tokens</span>
+    <span class="st"><b>__NCOST__</b> est. cost</span>
+    <span class="st"><b>__NAVG__</b>/mo avg</span>
   </div>
 </header>
 
 <div class="main">
   <nav class="nav">
     <button class="navbtn active" id="navChats" onclick="showView('chats')">
-      <span class="ic">💬</span>Chats</button>
+      <span class="ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Chats</button>
     <button class="navbtn" id="navSkills" onclick="showView('skills')">
-      <span class="ic">🧩</span>Skills</button>
+      <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span>Skills</button>
     <button class="navbtn" id="navInsights" onclick="showView('insights')">
-      <span class="ic">📊</span>Insights</button>
+      <span class="ic"><svg viewBox="0 0 24 24"><line x1="5" y1="21" x2="5" y2="11"/><line x1="12" y1="21" x2="12" y2="4"/><line x1="19" y1="21" x2="19" y2="14"/></svg></span>Insights</button>
   </nav>
 
   <div class="chats-wrap" id="chatsWrap">
@@ -622,11 +639,11 @@ HTML = r"""<!DOCTYPE html>
     </aside>
 
     <section class="center" id="center">
-      <div class="placeholder">← Pick a folder, then a chat to read the conversation.</div>
+      <div class="placeholder">Pick a folder, then a chat to read the conversation.</div>
     </section>
 
     <aside class="meta" id="meta">
-      <h3>Details <button class="close" id="metaClose">×</button></h3>
+      <h3>Details<button class="close" id="metaClose">×</button></h3>
       <div id="metaBody"></div>
     </aside>
   </div>
@@ -639,7 +656,7 @@ HTML = r"""<!DOCTYPE html>
       <div class="list" id="skillList"></div>
     </aside>
     <section class="center" id="skillCenter">
-      <div class="placeholder">← Pick a skill to read it.</div>
+      <div class="placeholder">Pick a skill to read it.</div>
     </section>
   </div>
 </div>
@@ -662,6 +679,7 @@ const q = document.getElementById('q');
 let activeIdx = -1;
 
 function esc(s){return (s||"").replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const FOLDER_SVG='<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
 
 const foldersEl = document.getElementById('folders');
 let activeRepo = null;
@@ -688,7 +706,7 @@ function renderFolders(){
     const idxs = FOLDERS.map[k];
     const cost = idxs.reduce((a,i)=>a+SESSIONS[i].cost,0);
     html += '<div class="folder'+(k===activeRepo?' active':'')+'" onclick="selectFolder('+ki+')">'+
-      '<span class="ficon">'+(k===activeRepo?'📂':'📁')+'</span>'+
+      '<span class="ficon">'+FOLDER_SVG+'</span>'+
       '<span class="fname">'+esc(k)+'</span>'+
       '<span class="fmeta">'+idxs.length+' · <span class="fc">$'+cost.toFixed(0)+'</span></span></div>';
   });
@@ -727,7 +745,7 @@ function openSession(i){
   let h = '<div class="convo-head"><div><h2>'+esc(s.title)+'</h2>'+
     '<div class="sub">'+esc(s.dateStr)+' · '+esc(s.project)+' · '+s.msgTotal+' msgs'+
     (s.cost?' · $'+s.cost.toFixed(2):'')+'</div></div>'+
-    '<button class="infobtn" onclick="toggleMeta()">ℹ️ Details</button></div>';
+    '<button class="infobtn" onclick="toggleMeta()">Details</button></div>';
 
   for(const m of s.msgs){
     if(m.r==='user'){
@@ -736,12 +754,12 @@ function openSession(i){
       let inner='';
       for(const p of (m.p||[])){
         if(p.k==='text') inner += '<div class="bubble">'+esc(p.v)+'</div>';
-        else if(p.k==='think') inner += '<details class="think-d"><summary>💭 thinking</summary><div class="think">'+esc(p.v)+'</div></details>';
-        else if(p.k==='tool') inner += '<div class="toolcall">🔧 '+esc(p.v)+' <span class="args">'+esc(p.a||'')+'</span></div>';
+        else if(p.k==='think') inner += '<details class="think-d"><summary>thinking</summary><div class="think">'+esc(p.v)+'</div></details>';
+        else if(p.k==='tool') inner += '<div class="toolcall">'+esc(p.v)+' <span class="args">'+esc(p.a||'')+'</span></div>';
       }
       h += '<div class="msg assistant"><div class="who">pi</div>'+inner+'</div>';
     } else if(m.r==='toolResult'){
-      h += '<details class="tool'+(m.e?' err':'')+'"><summary>↳ '+esc(m.n||'tool')+(m.e?' (error)':'')+'</summary><pre>'+esc(m.t)+'</pre></details>';
+      h += '<details class="tool'+(m.e?' err':'')+'"><summary>'+esc(m.n||'tool')+(m.e?' (error)':'')+'</summary><pre>'+esc(m.t)+'</pre></details>';
     } else if(m.r==='bash'){
       h += '<details class="bash"><summary class="cmd">$ '+esc(m.cmd)+'</summary><pre>'+esc(m.t)+'</pre></details>';
     }
@@ -779,7 +797,7 @@ function shq(p){ return "'"+String(p||'').replace(/'/g,"'\\''")+"'"; }
 function toggleMeta(){ metaEl.classList.toggle('open'); }
 document.getElementById('metaClose').addEventListener('click', ()=>metaEl.classList.remove('open'));
 function copyCmd(el){ navigator.clipboard.writeText(el.textContent).then(()=>{
-  const o=el.textContent; el.textContent='✓ copied'; setTimeout(()=>el.textContent=o,1000);}); }
+  const o=el.textContent; el.textContent='Copied'; setTimeout(()=>el.textContent=o,1000);}); }
 
 q.addEventListener('input', ()=>renderChats(q.value));
 activeRepo = FOLDERS.keys[0] || null;   // open the most-recent folder by default
@@ -811,7 +829,7 @@ function renderSkills(term){
     const hay = (s.name+' '+s.desc+' '+s.dir).toLowerCase();
     if(term && !hay.includes(term)) return;
     html += '<div class="skillitem'+(i===activeSkill?' active':'')+'" onclick="openSkill('+i+')">'+
-      '<div class="t">🧩 '+esc(s.name)+'</div>'+
+      '<div class="t">'+esc(s.name)+'</div>'+
       '<div class="d">'+esc(s.desc)+'</div></div>';
   });
   skillListEl.innerHTML = html || '<div style="padding:16px;color:#8b949e">No skills found.</div>';
@@ -821,7 +839,7 @@ function openSkill(i){
   activeSkill = i;
   renderSkills(sq.value);
   const s = SKILLS[i];
-  let h = '<div class="convo-head"><div><h2>🧩 '+esc(s.name)+'</h2>'+
+  let h = '<div class="convo-head"><div><h2>'+esc(s.name)+'</h2>'+
     '<div class="sub">'+esc(s.dir)+' · '+s.words+' words · '+s.files.length+' file(s)</div></div></div>';
   h += '<div class="skilldesc">'+esc(s.desc)+'</div>';
   const dir = s.path.replace(/\/SKILL\.md$/,'');
@@ -874,7 +892,7 @@ function renderInsights(){
   if(insightsDrawn) return; insightsDrawn=true;
   const I = INSIGHTS;
   const nDays = I.daily.length;
-  let h = '<h2>📊 Insights</h2>'+
+  let h = '<h2>Insights</h2>'+
     '<div class="lead">Spend and usage across '+SESSIONS.length+' sessions · generated '+GEN+'</div>';
 
   h += '<div class="kpis">'+
