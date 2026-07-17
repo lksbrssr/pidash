@@ -1,0 +1,12 @@
+# Generated dashboard — contains full private session transcripts. Never commit.
+sessions-dashboard.html
+*.html
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
