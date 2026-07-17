@@ -35,6 +35,13 @@ REPO_ALIASES = {
     "plresearch.org": "plrd.org",
 }
 
+# Explicit folder -> canonical GitHub owner/repo overrides. Use when a repo has
+# moved orgs (convos stay in the same folder, but the PR link points to the new
+# home). Takes priority over auto-detected slugs.
+REPO_GITHUB = {
+    "plneuro.xyz": "protocol/plneuro.xyz",
+}
+
 
 def detect_repo(blob, cwd):
     """Pick the repo a session worked on: the most-mentioned github repo,
@@ -53,6 +60,20 @@ def detect_repo(blob, cwd):
     if base and base != HOME_BASE:
         return REPO_ALIASES.get(base, base)
     return "other"
+
+
+def detect_slug(blob):
+    """Most-mentioned github owner/repo slug in the text, or '' if none."""
+    counter = Counter()
+    for m in _GH.finditer(blob or ""):
+        owner = m.group(1)
+        repo = re.sub(r"\.git$", "", m.group(2)).strip(".-")
+        if repo.lower() in _NOISE_REPO:
+            continue
+        counter[f"{owner}/{repo}"] += 1
+    if counter:
+        return max(counter, key=lambda k: (counter[k], len(k)))
+    return ""
 
 
 def clean_title(name, first_user):
@@ -215,12 +236,14 @@ def parse_session(path):
             blob_parts.append(mm.get("cmd", ""))
     blob = " ".join(blob_parts)[:500000]
     repo = detect_repo(blob, cwd)
+    ghslug = detect_slug(blob)
 
     return {
         "id": (header or {}).get("id", ""),
         "name": name or "",
         "title": title,
         "repo": repo,
+        "ghslug": ghslug,
         "cwd": cwd or "",
         "project": project,
         "preview": (first_user or "").replace("\n", " ").strip()[:160],
@@ -315,6 +338,16 @@ def build():
     total_tokens = sum(s["tokens"] for s in sessions)
     projects = sorted({s["project"] for s in sessions})
 
+    # Map each folder (repo group) -> canonical GitHub owner/repo. Auto-detect
+    # the most-mentioned slug across the folder's sessions, then let explicit
+    # REPO_GITHUB overrides win (e.g. a repo that moved orgs).
+    folder_slug = {}
+    for s in sessions:
+        if s["ghslug"]:
+            folder_slug.setdefault(s["repo"], Counter())[s["ghslug"]] += 1
+    folder_gh = {k: c.most_common(1)[0][0] for k, c in folder_slug.items()}
+    folder_gh.update(REPO_GITHUB)
+
     # Average monthly spend, pro-rated: total cost / actual elapsed time.
     # Span = earliest session .. latest session, converted to fractional
     # months (30.44 days/mo). This correctly handles partial first/last
@@ -399,11 +432,14 @@ def build():
     skills = scan_skills()
     skills_b64 = base64.b64encode(
         json.dumps(skills, ensure_ascii=False).encode("utf-8")).decode("ascii")
+    foldergh_b64 = base64.b64encode(
+        json.dumps(folder_gh, ensure_ascii=False).encode("utf-8")).decode("ascii")
     gen = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
 
     doc = HTML.replace("__DATA__", data_b64) \
               .replace("__INSIGHTS__", insights_b64) \
               .replace("__SKILLS__", skills_b64) \
+              .replace("__FOLDERGH__", foldergh_b64) \
               .replace("__GEN__", gen) \
               .replace("__DIR__", str(SESSIONS_DIR)) \
               .replace("__NSESS__", str(len(sessions))) \
@@ -541,6 +577,16 @@ HTML = r"""<!DOCTYPE html>
   /* Column 2: chats in the selected folder */
   .chatcol{width:350px;min-width:300px;border-right:1px solid var(--border);
     display:flex;flex-direction:column;background:var(--panel);}
+  .colbar{display:none;align-items:center;justify-content:space-between;gap:8px;
+    padding:9px 12px;border-bottom:1px solid var(--border);}
+  .colbar.show{display:flex;}
+  .colbar .fn{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;}
+  .colbar a{color:var(--accent);text-decoration:none;font-size:12px;white-space:nowrap;
+    border:1px solid var(--accentln);border-radius:7px;padding:4px 9px;display:inline-flex;
+    align-items:center;gap:5px;transition:background .12s;}
+  .colbar a:hover{background:var(--accentbg);}
+  .colbar a svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.8;}
   .chatcol .search{padding:10px;border-bottom:1px solid var(--border);}
   .chatcol input{width:100%;background:var(--panel2);color:var(--fg);border:1px solid var(--border);
     border-radius:8px;padding:8px 11px;font-size:13px;outline:none;transition:border-color .12s;}
@@ -634,6 +680,7 @@ HTML = r"""<!DOCTYPE html>
     <aside class="folders" id="folders"></aside>
 
     <aside class="chatcol">
+      <div class="colbar" id="colbar"></div>
       <div class="search"><input id="q" type="search" placeholder="Search in folder…"></div>
       <div class="list" id="list"></div>
     </aside>
@@ -670,6 +717,7 @@ function b64json(s){
 const SESSIONS = b64json("__DATA__");
 const INSIGHTS = b64json("__INSIGHTS__");
 const SKILLS = b64json("__SKILLS__");
+const FOLDER_GH = b64json("__FOLDERGH__");
 const GEN = "__GEN__", DIR = "__DIR__";
 const listEl = document.getElementById('list');
 const centerEl = document.getElementById('center');
@@ -717,7 +765,20 @@ function selectFolder(ki){
   activeRepo = FOLDERS.keys[ki];
   q.value = '';
   renderFolders();
+  renderColbar();
   renderChats('');
+}
+
+const EXT_SVG='<svg viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/>'+
+  '<path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>';
+function renderColbar(){
+  const bar = document.getElementById('colbar');
+  const slug = activeRepo!=null ? FOLDER_GH[activeRepo] : null;
+  if(!slug){ bar.className='colbar'; bar.innerHTML=''; return; }
+  bar.className='colbar show';
+  bar.innerHTML = '<span class="fn">'+esc(activeRepo)+'</span>'+
+    '<a href="https://github.com/'+esc(slug)+'/pulls" target="_blank" rel="noopener" '+
+    'title="'+esc(slug)+' pull requests">Pull requests '+EXT_SVG+'</a>';
 }
 
 function renderChats(term){
@@ -802,6 +863,7 @@ function copyCmd(el){ navigator.clipboard.writeText(el.textContent).then(()=>{
 q.addEventListener('input', ()=>renderChats(q.value));
 activeRepo = FOLDERS.keys[0] || null;   // open the most-recent folder by default
 renderFolders();
+renderColbar();
 renderChats('');
 
 /* ---------- View switching ---------- */
