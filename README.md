@@ -12,7 +12,11 @@ build step, no dependencies beyond Python 3.
   (`other` for sessions with no repo). Descriptive auto-titles, full transcript
   view (text, thinking, tool calls, bash output), and per-session search.
 - **Skills** — a browsable folder of every skill under `~/.pi/agent/skills/`,
-  showing name, description, and full `SKILL.md` body.
+  showing name, description, and the full `SKILL.md` body rendered as Markdown
+  (headings, lists, tables, code, links). Includes an **Add skill** panel: pick
+  (or drop) a `.md` file and it hands you a one-line, copy-to-run install command
+  that creates the skill folder from the file's frontmatter `name`. Re-run
+  `pidash` to pick it up.
 - **Insights** — spend over time (daily/monthly), cost by repo, cost by model,
   most expensive sessions, and pro-rated average monthly spend.
 - **Copy-to-run commands** — each chat gives you a ready-to-paste
