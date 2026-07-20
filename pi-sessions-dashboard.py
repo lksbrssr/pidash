@@ -510,9 +510,41 @@ HTML = r"""<!DOCTYPE html>
   .skillitem .t{font-weight:600;font-size:13px;}
   .skillitem .d{color:var(--muted);font-size:11px;margin-top:3px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-  .skillbody{max-width:820px;white-space:pre-wrap;word-wrap:break-word;
+  .skillbody{max-width:820px;word-wrap:break-word;
     background:var(--panel);border:1px solid var(--border);border-radius:10px;
-    padding:16px 18px;font-size:13px;line-height:1.6;}
+    padding:16px 22px;font-size:13px;line-height:1.65;}
+  .skillbody h1,.skillbody h2,.skillbody h3,.skillbody h4{line-height:1.3;margin:18px 0 8px;font-weight:650;}
+  .skillbody h1{font-size:20px;} .skillbody h2{font-size:17px;}
+  .skillbody h3{font-size:15px;} .skillbody h4{font-size:13.5px;}
+  .skillbody h1:first-child,.skillbody h2:first-child,.skillbody h3:first-child{margin-top:0;}
+  .skillbody p{margin:9px 0;}
+  .skillbody ul,.skillbody ol{margin:8px 0;padding-left:22px;}
+  .skillbody li{margin:3px 0;}
+  .skillbody a{color:var(--accent);text-decoration:none;}
+  .skillbody a:hover{text-decoration:underline;}
+  .skillbody code{background:var(--panel2);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--tagfg);}
+  .skillbody pre{background:var(--bg2);border:1px solid var(--border);border-radius:8px;
+    padding:12px 14px;overflow-x:auto;margin:10px 0;}
+  .skillbody pre code{background:none;border:none;padding:0;color:var(--fg);}
+  .skillbody blockquote{margin:10px 0;padding:4px 14px;border-left:3px solid var(--accentln);color:var(--muted);}
+  .skillbody hr{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .skillbody table{border-collapse:collapse;margin:12px 0;font-size:12.5px;width:100%;}
+  .skillbody th,.skillbody td{border:1px solid var(--border);padding:6px 10px;text-align:left;vertical-align:top;}
+  .skillbody th{background:var(--panel2);font-weight:600;}
+  .skillbody img{max-width:100%;border-radius:8px;}
+  .addskillbar{padding:10px;border-bottom:1px solid var(--border);}
+  .addbtn{width:100%;background:var(--accentbg);color:var(--accent);border:1px solid var(--accentln);
+    border-radius:8px;padding:8px;font-size:13px;font-weight:600;cursor:pointer;}
+  .addbtn:hover{background:var(--accentln);}
+  .addrop{display:block;border:1.5px dashed var(--border);border-radius:12px;padding:34px 20px;
+    text-align:center;color:var(--muted);cursor:pointer;font-size:13px;background:var(--panel);
+    max-width:820px;transition:border-color .15s,background .15s;}
+  .addrop:hover,.addrop.drag{border-color:var(--accent);background:var(--accentbg);color:var(--fg);}
+  .addname{font-weight:600;font-size:14px;margin-top:2px;}
+  .addnote{color:var(--muted);font-size:12px;margin-top:12px;}
+  .addnote code{background:var(--panel2);border:1px solid var(--border);border-radius:4px;
+    padding:1px 5px;font-family:ui-monospace,Menlo,monospace;color:var(--tagfg);}
   .skillfiles{margin-top:14px;font-size:12px;color:var(--muted);}
   .skillfiles code{color:var(--tagfg);}
   .skilldesc{color:var(--muted);font-size:13px;margin:6px 0 14px;font-style:italic;}
@@ -605,9 +637,12 @@ HTML = r"""<!DOCTYPE html>
 
   /* Center transcript */
   .center{flex:1;overflow-y:auto;padding:20px 26px;min-width:0;}
+  #center{padding-top:0;}
   .placeholder{color:var(--muted);text-align:center;margin-top:12%;font-size:15px;}
   .convo-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;
-    padding-bottom:14px;border-bottom:1px solid var(--border);}
+    padding-bottom:14px;border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:5;background:var(--bg);
+    margin:0 -26px 16px;padding:20px 26px 14px;}
   .convo-head h2{margin:0;font-size:18px;}
   .convo-head .sub{color:var(--muted);font-size:12px;margin-top:4px;}
   .infobtn{margin-left:auto;background:var(--panel2);color:var(--accent);border:1px solid var(--border);
@@ -700,11 +735,10 @@ HTML = r"""<!DOCTYPE html>
   <div class="skills-wrap" id="skillsWrap">
     <aside class="chatcol skillcol">
       <div class="search"><input id="sq" type="search" placeholder="Search skills…"></div>
+      <div class="addskillbar"><button class="addbtn" onclick="openAddSkill()">+ Add skill</button></div>
       <div class="list" id="skillList"></div>
     </aside>
-    <section class="center" id="skillCenter">
-      <div class="placeholder">Pick a skill to read it.</div>
-    </section>
+    <section class="center" id="skillCenter"></section>
   </div>
 </div>
 
@@ -875,7 +909,7 @@ function showView(v){
   document.getElementById('navSkills').classList.toggle('active', v==='skills');
   document.getElementById('navInsights').classList.toggle('active', v==='insights');
   if(v==='insights') renderInsights();
-  if(v==='skills') renderSkills('');
+  if(v==='skills'){ renderSkills(''); if(activeSkill<0) renderAddSkill(); }
 }
 
 /* ---------- Skills ---------- */
@@ -911,7 +945,7 @@ function openSkill(i){
     '<div class="ck">Edit with pi (agent) — click to copy</div>'+
     '<div class="cmdbox" onclick="copyCmd(this)">cd '+esc(shq(dir))+' && pi @SKILL.md</div>'+
     '</div>';
-  h += '<div class="skillbody">'+esc(s.body)+'</div>';
+  h += '<div class="skillbody">'+mdToHtml(s.body)+'</div>';
   if(s.files.length){
     h += '<div class="skillfiles"><b>Files:</b> '+
       s.files.map(f=>'<code>'+esc(f)+'</code>').join(', ')+'</div>';
@@ -922,6 +956,134 @@ function openSkill(i){
 }
 
 sq.addEventListener('input', ()=>renderSkills(sq.value));
+
+/* ---------- Add a skill (client-side; emits an install command) ---------- */
+function slugify(s){
+  return (s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+}
+function b64enc(str){
+  const bytes = new TextEncoder().encode(str); let bin='';
+  bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin);
+}
+function parseSkillName(text, filename){
+  const fm = text.match(/^---\s*\n([\s\S]*?)\n---/);
+  if(fm){ const n = fm[1].match(/^\s*name\s*:\s*(.+?)\s*$/m);
+    if(n) return n[1].replace(/^["']|["']$/g,'').trim(); }
+  return filename.replace(/\.md$/i,'');
+}
+function stripFrontmatter(text){
+  return text.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/,'');
+}
+function renderAddSkill(){
+  activeSkill = -1;
+  skillCenterEl.innerHTML =
+    '<div class="convo-head"><div><h2>Add a skill</h2>'+
+    '<div class="sub">Pick a SKILL.md (or any .md) to install into your library</div></div></div>'+
+    '<label class="addrop" id="addDrop">'+
+      '<input type="file" id="skillFile" accept=".md,.markdown,text/markdown" style="display:none">'+
+      'Click to choose a <b>.md</b> file \u2014 or drop it here'+
+    '</label>'+
+    '<div id="addOut"></div>';
+  const input = document.getElementById('skillFile');
+  const drop = document.getElementById('addDrop');
+  input.addEventListener('change', e=>{ if(e.target.files[0]) handleSkillFile(e.target.files[0]); });
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev, e=>{
+    e.preventDefault(); drop.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev, e=>{
+    e.preventDefault(); drop.classList.remove('drag'); }));
+  drop.addEventListener('drop', e=>{
+    const f = e.dataTransfer.files[0];
+    if(f) handleSkillFile(f);
+  });
+  skillCenterEl.scrollTop = 0;
+}
+function openAddSkill(){ activeSkill=-1; renderSkills(sq.value); renderAddSkill(); }
+function handleSkillFile(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const text = reader.result || '';
+    const rawName = parseSkillName(text, file.name);
+    const dir = slugify(rawName) || 'new-skill';
+    const target = '~/.pi/agent/skills/'+dir+'/SKILL.md';
+    const cmd = 'mkdir -p ~/.pi/agent/skills/'+dir+" && echo '"+b64enc(text)+"' | base64 -d > "+target;
+    document.getElementById('addOut').innerHTML =
+      '<div class="skillcmds" style="margin-top:16px">'+
+      '<div class="ck">Skill name</div><div class="addname">'+esc(rawName)+'</div>'+
+      '<div class="ck">Installs to</div>'+
+      '<div class="cmdbox" onclick="copyCmd(this)">'+esc(target)+'</div>'+
+      '<div class="ck">Run this in your terminal \u2014 click to copy</div>'+
+      '<div class="cmdbox" onclick="copyCmd(this)">'+esc(cmd)+'</div>'+
+      '<div class="addnote">Then re-run <code>pidash</code> to see it in the list.</div>'+
+      '</div>'+
+      '<div class="ck" style="margin:16px 0 3px;text-transform:uppercase;letter-spacing:.04em;font-size:11px;color:var(--muted)">Preview</div>'+
+      '<div class="skillbody">'+mdToHtml(stripFrontmatter(text))+'</div>';
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Minimal Markdown renderer (dependency-free) ---------- */
+function mdInline(s){
+  s = s.replace(/`([^`]+)`/g, (m,c)=>'<code>'+c+'</code>');
+  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img alt="$1" src="$2">');
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/(^|[^\w])__([^_]+)__(?![\w])/g, '$1<strong>$2</strong>');
+  s = s.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  return s;
+}
+function mdToHtml(src){
+  const lines = (src||'').split(/\r?\n/);
+  const out = []; let i=0, listType=null;
+  const closeList = ()=>{ if(listType){ out.push('</'+listType+'>'); listType=null; } };
+  const special = ln => /^\s*```/.test(ln) || /^(#{1,6})\s/.test(ln) ||
+    /^\s*[-*+]\s+/.test(ln) || /^\s*\d+\.\s+/.test(ln) || /^\s*>\s?/.test(ln) ||
+    /^\s*$/.test(ln);
+  while(i < lines.length){
+    let ln = lines[i], m;
+    if((m = ln.match(/^\s*```(.*)$/))){
+      closeList(); const buf=[]; i++;
+      while(i<lines.length && !/^\s*```/.test(lines[i])){ buf.push(esc(lines[i])); i++; }
+      i++;
+      out.push('<pre><code>'+buf.join('\n')+'</code></pre>');
+      continue;
+    }
+    if((m = ln.match(/^(#{1,6})\s+(.*)$/))){
+      closeList(); const lvl=m[1].length;
+      out.push('<h'+lvl+'>'+mdInline(esc(m[2].replace(/\s+#+\s*$/,'')))+'</h'+lvl+'>'); i++; continue;
+    }
+    if(/^\s*([-*_])(\s*\1){2,}\s*$/.test(ln)){ closeList(); out.push('<hr>'); i++; continue; }
+    if(/\|/.test(ln) && i+1<lines.length &&
+       /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)+\|?\s*$/.test(lines[i+1])){
+      closeList();
+      const parseRow = r => r.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(c=>c.trim());
+      const headers = parseRow(ln); i+=2; const rows=[];
+      while(i<lines.length && /\|/.test(lines[i]) && !/^\s*$/.test(lines[i])){ rows.push(parseRow(lines[i])); i++; }
+      let t = '<table><thead><tr>'+headers.map(h=>'<th>'+mdInline(esc(h))+'</th>').join('')+'</tr></thead><tbody>';
+      rows.forEach(r=>{ t+='<tr>'+r.map(c=>'<td>'+mdInline(esc(c))+'</td>').join('')+'</tr>'; });
+      out.push(t+'</tbody></table>'); continue;
+    }
+    if(/^\s*>\s?/.test(ln)){
+      closeList(); const buf=[];
+      while(i<lines.length && /^\s*>\s?/.test(lines[i])){ buf.push(mdInline(esc(lines[i].replace(/^\s*>\s?/,'')))); i++; }
+      out.push('<blockquote>'+buf.join('<br>')+'</blockquote>'); continue;
+    }
+    if((m = ln.match(/^\s*[-*+]\s+(.*)$/))){
+      if(listType!=='ul'){ closeList(); out.push('<ul>'); listType='ul'; }
+      out.push('<li>'+mdInline(esc(m[1]))+'</li>'); i++; continue;
+    }
+    if((m = ln.match(/^\s*\d+\.\s+(.*)$/))){
+      if(listType!=='ol'){ closeList(); out.push('<ol>'); listType='ol'; }
+      out.push('<li>'+mdInline(esc(m[1]))+'</li>'); i++; continue;
+    }
+    if(/^\s*$/.test(ln)){ closeList(); i++; continue; }
+    closeList(); const buf=[];
+    while(i<lines.length && !special(lines[i])){ buf.push(mdInline(esc(lines[i]))); i++; }
+    out.push('<p>'+buf.join('<br>')+'</p>');
+  }
+  closeList();
+  return out.join('\n');
+}
 
 /* ---------- Insights ---------- */
 function money(n){return '$'+(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
