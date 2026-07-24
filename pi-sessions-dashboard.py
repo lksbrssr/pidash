@@ -40,6 +40,7 @@ REPO_ALIASES = {
 # home). Takes priority over auto-detected slugs.
 REPO_GITHUB = {
     "plneuro.xyz": "protocol/plneuro.xyz",
+    "plrd.org": "protocol/plrd.org",
 }
 
 
