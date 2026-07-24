@@ -590,6 +590,7 @@ HTML = r"""<!DOCTYPE html>
   /* Column 1: folders (repo groups) */
   .folders{width:230px;min-width:200px;border-right:1px solid var(--border);
     overflow-y:auto;background:var(--panel);}
+  .folders.hide{display:none;}
   .folders .colhead{padding:11px 12px;font-size:11px;text-transform:uppercase;
     letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border);
     position:sticky;top:0;background:var(--panel);}
@@ -633,7 +634,18 @@ HTML = r"""<!DOCTYPE html>
   .item .m{color:var(--muted);font-size:11px;margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;
     font-variant-numeric:tabular-nums;}
   .item .m .cost{color:var(--green);}
+  .item .m .repotag{background:var(--accentbg);color:var(--accent);border-radius:5px;
+    padding:0 6px;font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis;
+    white-space:nowrap;}
   .tag{background:var(--accentbg);color:var(--tagfg);border-radius:20px;padding:1px 8px;font-size:11px;}
+
+  /* Folders vs Recent toggle */
+  .viewtoggle{display:flex;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);}
+  .tgbtn{flex:1;background:var(--panel2);color:var(--muted);border:1px solid var(--border);
+    border-radius:8px;padding:6px 0;font-size:12px;font-weight:600;cursor:pointer;
+    transition:background .12s,color .12s,border-color .12s;}
+  .tgbtn:hover{color:var(--fg);}
+  .tgbtn.active{background:var(--accentbg);color:var(--accent);border-color:var(--accentln);}
 
   /* Center transcript */
   .center{flex:1;overflow-y:auto;padding:20px 26px;min-width:0;}
@@ -715,6 +727,10 @@ HTML = r"""<!DOCTYPE html>
     <aside class="folders" id="folders"></aside>
 
     <aside class="chatcol">
+      <div class="viewtoggle">
+        <button class="tgbtn active" id="tgFolders" onclick="setViewMode('folders')">Folders</button>
+        <button class="tgbtn" id="tgRecent" onclick="setViewMode('recent')">Recent</button>
+      </div>
       <div class="colbar" id="colbar"></div>
       <div class="search"><input id="q" type="search" placeholder="Search in folder…"></div>
       <div class="list" id="list"></div>
@@ -765,6 +781,7 @@ const FOLDER_SVG='<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2
 
 const foldersEl = document.getElementById('folders');
 let activeRepo = null;
+let viewMode = 'folders';   // 'folders' = grouped by repo, 'recent' = flat chronological
 
 // Build folders (repo groups) once: sessions per repo, ordered by most-recent
 // activity, 'other' always last. Sessions within a repo stay newest-first
@@ -805,9 +822,21 @@ function selectFolder(ki){
 
 const EXT_SVG='<svg viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/>'+
   '<path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>';
+function setViewMode(m){
+  if(m===viewMode) return;
+  viewMode = m;
+  document.getElementById('tgFolders').classList.toggle('active', m==='folders');
+  document.getElementById('tgRecent').classList.toggle('active', m==='recent');
+  foldersEl.classList.toggle('hide', m==='recent');
+  q.value = '';
+  q.placeholder = m==='recent' ? 'Search all chats\u2026' : 'Search in folder\u2026';
+  renderColbar();
+  renderChats('');
+}
+
 function renderColbar(){
   const bar = document.getElementById('colbar');
-  const slug = activeRepo!=null ? FOLDER_GH[activeRepo] : null;
+  const slug = (viewMode==='folders' && activeRepo!=null) ? FOLDER_GH[activeRepo] : null;
   if(!slug){ bar.className='colbar'; bar.innerHTML=''; return; }
   bar.className='colbar show';
   bar.innerHTML = '<span class="fn">'+esc(activeRepo)+'</span>'+
@@ -817,20 +846,27 @@ function renderColbar(){
 
 function renderChats(term){
   term = (term||'').toLowerCase();
-  const idxs = activeRepo!=null ? FOLDERS.map[activeRepo] : [];
+  // 'recent' = every session, newest-first (SESSIONS is globally sorted desc);
+  // 'folders' = only the selected folder's sessions.
+  const idxs = viewMode==='recent'
+    ? SESSIONS.map((_,i)=>i)
+    : (activeRepo!=null ? FOLDERS.map[activeRepo] : []);
   let html = '';
   for(const i of idxs){
     const s = SESSIONS[i];
-    const hay = (s.title+' '+s.preview+' '+s.models.join(' ')).toLowerCase();
+    const hay = (s.title+' '+s.preview+' '+s.models.join(' ')+' '+s.repo).toLowerCase();
     if(term && !hay.includes(term)) continue;
     const cost = s.cost ? '$'+s.cost.toFixed(2) : '';
+    const repoTag = viewMode==='recent'
+      ? '<span class="repotag">'+esc(s.repo)+'</span>' : '';
     html += '<div class="item'+(i===activeIdx?' active':'')+'" onclick="openSession('+i+')">'+
       '<div class="t">'+esc(s.title)+'</div>'+
-      '<div class="m"><span>'+esc(s.dateStr)+'</span>'+
+      '<div class="m">'+repoTag+'<span>'+esc(s.dateStr)+'</span>'+
       '<span>'+s.msgTotal+' msgs</span>'+
       (cost?'<span class="cost">'+cost+'</span>':'')+'</div></div>';
   }
-  listEl.innerHTML = html || '<div style="padding:16px;color:#8b949e">No chats here.</div>';
+  const empty = viewMode==='recent' ? 'No chats found.' : 'No chats here.';
+  listEl.innerHTML = html || '<div style="padding:16px;color:#8b949e">'+empty+'</div>';
 }
 
 function openSession(i){
