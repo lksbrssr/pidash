@@ -41,6 +41,18 @@ REPO_ALIASES = {
 REPO_GITHUB = {
     "plneuro.xyz": "protocol/plneuro.xyz",
     "plrd.org": "protocol/plrd.org",
+    "plrd-interventions": "lksbrssr/plrd-interventions",
+}
+
+# Pin a specific session to a folder, overriding auto-detection. Use when a
+# session's most-mentioned repo isn't the repo it was really *for* — e.g. a
+# session that reads a fork source heavily before creating the new repo, so the
+# source out-counts the actual subject. Keyed by session id (the `session`
+# header's "id").
+SESSION_FOLDER = {
+    # "build the PL R&D Interventions Console" — reads protocol/plrd-distribution
+    # (the fork source) far more than it mentions the new repo it produced.
+    "01a00196-bf16-795a-b559-f958b67eacb5": "plrd-interventions",
 }
 
 
@@ -236,7 +248,8 @@ def parse_session(path):
             blob_parts.append(mm.get("t", ""))
             blob_parts.append(mm.get("cmd", ""))
     blob = " ".join(blob_parts)[:500000]
-    repo = detect_repo(blob, cwd)
+    session_id = (header or {}).get("id", "")
+    repo = SESSION_FOLDER.get(session_id, detect_repo(blob, cwd))
     ghslug = detect_slug(blob)
 
     return {
